@@ -1,0 +1,12 @@
+/test-results/
+/test-reports/
+/tests/sanbox/
+venv/
+/.vscode/
+__pycache__/
+*.pyc
+.idea/
+sandbox/
+log.log
+.run
+.venv/
