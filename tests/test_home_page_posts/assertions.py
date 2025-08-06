@@ -1,5 +1,9 @@
+import re
+import unicodedata
+from typing import Optional
 from src.page_objects.post_detail_page import PostDetailPage
 from src.page_objects.home_page import HomePage
+from src.core.logger_controller import LoggerController
 
 
 class HomePageAssertions:
@@ -16,11 +20,54 @@ class HomePageAssertions:
         allowing tests to focus on behavior while assertions handle validation.
     """
 
-    def __init__(self, page):
+    def __init__(self, page, logger: Optional[LoggerController] = None):
+        """
+        Initialize assertions with page object and optional logger.
+
+        Args:
+            page: Playwright page object
+            logger: Optional logger controller for detailed logging
+        """
         self.home_page = HomePage(page)
         self.post_detail_page = PostDetailPage(page)
+        self.logger = logger
 
-    def verify_that_all_posts_are_displayed(self, expected_count: int):
+    def _normalize_text(self, text: str) -> str:
+        """Normalize Unicode text for consistent comparison with comprehensive cleaning."""
+        if not text:
+            return ""
+
+        # Step 1: Unicode normalization (NFC)
+        text = unicodedata.normalize("NFC", text)
+
+        # Step 2: Remove invisible/control characters
+        # Categories to remove: Cf (format), Cc (control), Cn (unassigned)
+        text = "".join(
+            char
+            for char in text
+            if unicodedata.category(char) not in ["Cf", "Cc", "Cn"]
+        )
+
+        # Step 3: Remove zero-width characters specifically
+        zero_width_chars = [
+            "\u200b",  # Zero Width Space
+            "\u200c",  # Zero Width Non-Joiner
+            "\u200d",  # Zero Width Joiner
+            "\u2060",  # Word Joiner
+            "\ufeff",  # Zero Width No-Break Space (BOM)
+        ]
+        for char in zero_width_chars:
+            text = text.replace(char, "")
+
+        # Step 4: Normalize whitespace
+        text = re.sub(
+            r"\s+", " ", text
+        )  # Replace multiple whitespace with single space
+
+        # Step 5: Strip leading/trailing whitespace
+        return text.strip()
+
+    def verify_displayed_posts_number(self, expected_count: int):
         """
         Verify that the exact number of posts are displayed on the home page.
         This method retrieves all visible posts from the home page and compares
@@ -44,15 +91,33 @@ class HomePageAssertions:
             post for post in self.home_page.get_all_posts() if post.element.is_visible()
         ]
 
+        actual_count = len(actual_displayed_posts)
+
+        # Log the assertion result (with null check)
+        if self.logger:
+            self.logger.log_assertion(
+                f"Expected {expected_count} posts, found {actual_count}",
+                actual_count == expected_count,
+            )
+
         assert (
-            len(actual_displayed_posts) == expected_count
-        ), f"Expected {expected_count} posts, but found {len(actual_displayed_posts)}."
+            actual_count == expected_count
+        ), f"Expected {expected_count} posts, but found {actual_count}."
 
         # Check that all posts have the required attributes
         for attr in ["title", "image_url", "created_date"]:
-            assert all(
+            attr_check_passed = all(
                 hasattr(post, attr) for post in actual_displayed_posts
-            ), f"Not all posts have a '{attr}' attribute."
+            )
+
+            assert attr_check_passed, f"Not all posts have a '{attr}' attribute."
+
+            # Log attribute check result (with null check)
+            if self.logger:
+                self.logger.log_assertion(
+                    f"All posts have a '{attr}' attribute.",
+                    attr_check_passed,
+                )
 
     def verify_navigate_to_post_detail_successfully(self, expected_title: str):
         """
@@ -83,12 +148,21 @@ class HomePageAssertions:
         """
         # Wait for navigation to complete
         actual_title = self.post_detail_page.get_post_title()
-        print(f"Expected title: {expected_title}, Actual title: {actual_title}")
 
-        # Verify the current URL matches the expected URI
+        # Normalize both titles for comparison
+        normalized_expected = self._normalize_text(expected_title)
+        normalized_actual = self._normalize_text(actual_title)
+
+        # Log assertion with null check
+        if self.logger:
+            self.logger.log_assertion(
+                f"Expected post title: '{normalized_expected}', Actual post title: '{normalized_actual}'",
+                normalized_expected == normalized_actual,
+            )
+
         assert (
-            expected_title == actual_title
-        ), f"Expected title to contain '{expected_title}', but got '{actual_title}'."
+            normalized_expected == normalized_actual
+        ), f"Expected title '{normalized_expected}', but got '{normalized_actual}'."
 
     def verify_the_current_page_number(self, expected_number: int):
         """
@@ -113,6 +187,14 @@ class HomePageAssertions:
             assertions.verify_the_current_page_number(2)
         """
         actual_page_number = self.home_page.get_current_page_number()
+
+        # Log assertion with null check
+        if self.logger:
+            self.logger.log_assertion(
+                f"Expected current page number: {expected_number}, Actual current page number: {actual_page_number}",
+                actual_page_number == expected_number,
+            )
+
         assert (
             actual_page_number == expected_number
-        ), f"Expected current page number to be {expected_number}, but got {actual_page_number}."
+        ), f"Expected current page number {expected_number}, but got {actual_page_number}."

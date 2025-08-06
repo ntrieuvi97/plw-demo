@@ -1,8 +1,11 @@
 from playwright.sync_api import Page
 
+from src.constants.test_configs import DeviceConstants, ScreenConstants
 from src.page_objects.home_page import HomePage
 from src.constants.urls import WebUrls
 from random import choice
+
+from src.core.decoration_controller import device_marker, screen_sizes
 
 
 def test_verify_that_all_posts_are_displayed(
@@ -28,9 +31,10 @@ def test_verify_that_all_posts_are_displayed(
     # Scroll to the bottom to load all posts
     home_page.scroll_to_bottom()
     # Assert that all posts are displayed
-    assertions.verify_that_all_posts_are_displayed(expected_count=10)
+    assertions.verify_displayed_posts_number(expected_count=10)
 
 
+@device_marker(DeviceConstants.MOBILE.IPHONE_12)
 def test_verify_that_user_can_view_the_post_details_by_clicking_on_title(
     page: Page, home_page: HomePage, assertions
 ):
@@ -58,7 +62,7 @@ def test_verify_that_user_can_view_the_post_details_by_clicking_on_title(
         # Click on the post title to navigate to the post details page
         home_page.click_on_post_part(random_post, "title")
 
-        # Assert that all posts are displayed
+        # Assert that the post details page is displayed with the correct title
         assertions.verify_navigate_to_post_detail_successfully(
             expected_title=random_post.title
         )
@@ -67,6 +71,7 @@ def test_verify_that_user_can_view_the_post_details_by_clicking_on_title(
         pass
 
 
+@screen_sizes(ScreenConstants.FULL_HD)
 def test_verify_that_user_can_view_the_post_details_by_clicking_on_image(
     page: Page, home_page: HomePage, assertions
 ):

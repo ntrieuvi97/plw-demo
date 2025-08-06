@@ -2,7 +2,7 @@ from typing import List
 from typing_extensions import Literal
 from playwright.sync_api import Page
 
-from constants.test_configs import ScrollConstants
+from src.constants.test_configs import ScrollConstants
 from src.utils.scroll_utils import ScrollUtils
 from .models.post_item import PostItem
 from .post_detail_page import PostDetailPage
@@ -27,6 +27,7 @@ class HomePageLocators:
     POST_DATE_LOCATOR = ".wp-block-post-date a"
 
     # Pagination locators
+    PAGINATION_NUMBER_LOCATOR = "a:has-text('{page_number}')"
     PAGINATION_LOCATOR = ".wp-block-query-pagination-numbers"
     CURRENT_PAGE_LOCATOR = ".current"
     PREVIOUS_PAGE_LOCATOR = ".wp-block-query-pagination-previous span"
@@ -35,9 +36,10 @@ class HomePageLocators:
 
 class HomePage:
 
-    def __init__(self, page: Page):
+    def __init__(self, page: Page, logger=None):
         self.page = page
         self.locators = HomePageLocators()
+        self.logger = logger
 
     def _extract_post_item(self, post_element) -> PostItem:
         """
@@ -46,9 +48,9 @@ class HomePage:
         :return: PostItem object containing title, image URL, created date, and the element itself.
         """
         """Extract PostItem from a post element."""
-        title_el = post_element.query_selector(self.POST_TITLE_LOCATOR)
-        image_el = post_element.query_selector(self.POST_IMAGE_LOCATOR)
-        date_el = post_element.query_selector(self.POST_DATE_LOCATOR)
+        title_el = post_element.query_selector(self.locators.POST_TITLE_LOCATOR)
+        image_el = post_element.query_selector(self.locators.POST_IMAGE_LOCATOR)
+        date_el = post_element.query_selector(self.locators.POST_DATE_LOCATOR)
 
         if not all([title_el, image_el, date_el]):
             return None
@@ -65,7 +67,7 @@ class HomePage:
         Retrieve all posts displayed on the home page.
         Returns a list of PostItem objects.
         """
-        posts = self.page.query_selector_all(self.POST_ITEMS_LOCATOR)
+        posts = self.page.query_selector_all(self.locators.POST_ITEMS_LOCATOR)
         post_items = []
 
         for post in posts:
@@ -117,31 +119,33 @@ class HomePage:
             int: The current page number.
         """
         try:
-            current_page_element = self.page.locator(self.CURRENT_PAGE_LOCATOR)
-            if not current_page_element.is_visible():
-                return 1
-
-            current_page_text = current_page_element.inner_text().strip()
-            if not current_page_text:
-                return 1
-
-            return int(current_page_text)
-        except (ValueError, Exception):
+            current_page_element = self.page.locator(self.locators.CURRENT_PAGE_LOCATOR)
+        except TimeoutError:
             return 1
 
-    def navigate_to_page(self, page_number: int) -> "HomePage":
+        current_page_text = current_page_element.inner_text().strip()
+        if not current_page_text:
+            return 1
+
+        return int(current_page_text)
+
+    def click_on_page_navigation_number(self, page_number: int) -> "HomePage":
         """
         Click to navigate to a specific page in the pagination.
         :param page_number: The page number to navigate to.
         """
-        pagination = self.page.locator(self.PAGINATION_LOCATOR)
-        target_page = pagination.locator(f"a:has-text('{page_number}')")
+        pagination = self.page.locator(self.locators.PAGINATION_LOCATOR)
+        target_page = pagination.locator(
+            self.locators.PAGINATION_NUMBER_LOCATOR.format(page_number=page_number)
+        )
         if target_page.is_visible():
             target_page.click()
             self.page.wait_for_load_state("load")
         return self
 
-    def navigate_pagination(self, direction: Literal["next", "previous"]) -> "HomePage":
+    def click_pagination_button(
+        self, direction: Literal["next", "previous"]
+    ) -> "HomePage":
         """
         Click to navigate to the next or previous page in the pagination.
         :param direction: 'next' or 'previous'
@@ -150,9 +154,9 @@ class HomePage:
             raise ValueError("Direction must be 'next' or 'previous'.")
 
         locator = (
-            self.NEXT_PAGE_LOCATOR
+            self.locators.NEXT_PAGE_LOCATOR
             if direction == "next"
-            else self.PREVIOUS_PAGE_LOCATOR
+            else self.locators.PREVIOUS_PAGE_LOCATOR
         )
         direction_button = self.page.locator(locator)
         if direction_button.is_visible():

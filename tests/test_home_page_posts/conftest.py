@@ -5,12 +5,13 @@ from .assertions import HomePageAssertions
 from src.page_objects.home_page import HomePage
 
 
-@pytest.fixture()
-def assertions(page):
+@pytest.fixture
+def assertions(page, logger_controller) -> HomePageAssertions:
     """
-    Fixture to provide assertions for home page tests.
+    Provide assertions helper with integrated logging.
     """
-    yield HomePageAssertions(page)
+    logger = logger_controller
+    return HomePageAssertions(page, logger)
 
 
 @pytest.fixture()

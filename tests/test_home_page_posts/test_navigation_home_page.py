@@ -1,3 +1,4 @@
+from time import sleep
 from playwright.sync_api import Page
 
 from src.page_objects.home_page import HomePage
@@ -27,7 +28,7 @@ def test_verify_that_user_can_navigate_to_the_next_page_of_posts_by_clicking_num
 
     try:
         # Click on the next button to navigate to the next page
-        home_page.click_to_pagination_number(2)
+        home_page.click_on_page_navigation_number(2)
 
         # Assert that the current URL has changed to the next page
         assertions.verify_the_current_page_number(2)
@@ -56,11 +57,11 @@ def test_verify_that_user_can_navigate_to_the_next_page_of_posts_by_clicking_nex
     """
     # Navigate to the home page
     page.goto(WebUrls.BASE_URL)
-    home_page.click_to_pagination_number(2)
+    home_page.click_on_page_navigation_number(2)
 
     try:
         # Click on the next button to navigate to the next page
-        home_page.click_pagination_direction("next")
+        home_page.click_pagination_button("next")
 
         # Assert that the current URL has changed to the next page
         assertions.verify_the_current_page_number(3)
@@ -92,10 +93,10 @@ def test_verify_that_user_can_navigate_to_the_previous_page_of_posts_by_clicking
 
     try:
         # Click on the next button to go to the second page first
-        home_page.click_to_pagination_number(2)
+        home_page.click_on_page_navigation_number(2)
 
         # Click on the previous button to navigate back to the first page
-        home_page.click_pagination_direction("previous")
+        home_page.click_pagination_button("previous")
         # Assert that the current URL has changed back to the first page
         assertions.verify_the_current_page_number(1)
 
